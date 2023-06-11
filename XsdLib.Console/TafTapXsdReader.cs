@@ -2,7 +2,7 @@ using System.Xml;
 using System.Xml.Schema;
 using System.IO;
 
-namespace XsdLib;
+namespace XsdLib.Console;
 
 
 public static class TafTapXsdReader

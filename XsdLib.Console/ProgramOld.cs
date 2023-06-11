@@ -1,4 +1,4 @@
-﻿using XsdLib;
+﻿using XsdLib.Console;
 
 var rootElements = new List<string>{
     "PathCanceledMessage",
