@@ -1,4 +1,4 @@
-﻿using BaneNor.TafTap.Generator;
+﻿using XsdLib;
 
 var rootElements = new List<string>{
     "PathCanceledMessage",

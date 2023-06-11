@@ -3,7 +3,7 @@ using System.Linq;
 using System.Text;
 using System.Xml;
 
-namespace BaneNor.TafTap.Generator;
+namespace XsdLib;
 
 public class Generator
 {
@@ -287,6 +287,7 @@ public class Generator
             XmlTypeCode.Int => "int",
             XmlTypeCode.Time => "string",
             XmlTypeCode.Byte => "byte",
+            XmlTypeCode.GYear => "int",
 
             _ => throw new NotImplementedException($"{st.Datatype?.TypeCode} is not implemented")
         };

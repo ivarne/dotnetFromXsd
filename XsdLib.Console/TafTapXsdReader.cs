@@ -2,7 +2,7 @@ using System.Xml;
 using System.Xml.Schema;
 using System.IO;
 
-namespace BaneNor.TafTap.Generator;
+namespace XsdLib;
 
 
 public static class TafTapXsdReader

@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace BaneNor.TafTap.Generator;
+namespace XsdLib;
 
 public class ClassModel
 {

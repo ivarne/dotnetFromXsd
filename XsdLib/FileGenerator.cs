@@ -1,7 +1,7 @@
 using System.Text;
 using System.Xml;
 
-namespace BaneNor.TafTap.Generator;
+namespace XsdLib;
 
 
 public class FileGenerator
