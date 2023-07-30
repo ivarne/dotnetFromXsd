@@ -1,0 +1,10 @@
+<label>
+Vis json attributter
+<InputCheckbox DisplayName="Settings.JsonAttributes" @bind-Value="Settings.JsonAttributes"/>
+</label>
+
+@code{
+
+    [Parameter, EditorRequired]
+    public required GeneratorSettings Settings { get; set; }
+}

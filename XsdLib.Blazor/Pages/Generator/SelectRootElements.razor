@@ -1,0 +1,41 @@
+@using System.Xml
+<ol>
+    @foreach (var item in SelectedRootElements)
+    {
+        <li>@item <button @onclick="(e)=>HandleValueDelete(item)">delete</button></li>
+    }
+</ol>
+<select @onchange:preventDefault="true" @onchange="(e)=>HandleValueChanged(e.Value.ToString())">
+    <option value=""></option>
+    @foreach (var item in NonSelectedRootElements)
+    {
+        <option value="@item.ToString()">@item.Name</option>
+    }
+</select>
+
+
+@code
+{
+    [Parameter, EditorRequired]
+    public required List<XmlQualifiedName> RootElements { get; set; }
+    [Parameter, EditorRequired]
+    public EventCallback<List<XmlQualifiedName>> OnChange { get; set; }
+    
+    private List<XmlQualifiedName> SelectedRootElements { get; set; }= new();
+    private IEnumerable<XmlQualifiedName> NonSelectedRootElements => RootElements.Where(r=>!SelectedRootElements.Contains(r));
+
+    private string Value { get; set; } = "";
+    private async Task HandleValueChanged(string? value)
+    {
+        if(string.IsNullOrEmpty(value)) return;
+        var element = RootElements.First(e=>e.ToString() == value);
+        SelectedRootElements.Add(element);
+        Value = value;
+        await OnChange.InvokeAsync(SelectedRootElements);
+    }
+    private async Task HandleValueDelete(XmlQualifiedName element)
+    {
+        SelectedRootElements.Remove(element);
+        await OnChange.InvokeAsync(SelectedRootElements);
+    }
+}

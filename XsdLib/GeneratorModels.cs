@@ -8,14 +8,15 @@ public class ClassModel
     public string? Summary { get; set; }
     public string? Remarks { get; set; }
     public required List<ClassProperty> ClassProperties { get; set; }
+    public required bool IsRootClass { get; set; }
 
-    public void ToClass(StringBuilder sb)
+    public void ToClass(StringBuilder sb, GeneratorSettings settings)
     {
         if (Summary is not null)
         {
             sb.Append($$"""
             /// <summary>
-            /// {{{System.Security.SecurityElement.Escape(Summary.ReplaceLineEndings("\n/// "))}}
+            /// {{System.Security.SecurityElement.Escape(Summary.ReplaceLineEndings("\n/// "))}}
             /// </summary>
             
             """);
@@ -29,9 +30,12 @@ public class ClassModel
             
             """);
         }
+        sb.AppendLine($"""[XmlType(AnonymousType=true, Namespace = "{Name.Namespace}")]""");
+        if (IsRootClass)
+        {
+            sb.AppendLine($"""[XmlRoot(Namespace = "{Name.Namespace}", IsNullable=false)]""");
+        }
         sb.Append($$"""
-        [XmlType(AnonymousType=true, Namespace = "{{Name.Namespace}}")]
-        [XmlRoot(Namespace = "{{Name.Namespace}}", IsNullable=false)]
         public class {{Name.Name}}
         {
         
@@ -47,7 +51,7 @@ public class ClassModel
             {
                 first = false;
             }
-            prop.ToProperty(sb);
+            prop.ToProperty(sb, settings);
         }
         sb.Append("}\n\n");
     }
@@ -65,13 +69,13 @@ public class ClassProperty
     public string? Remarks { get; set; }
 
     public string GetFullType() => MaxOccurs > 1 ? $"List<{Type}>" : Type;
-    public void ToProperty(StringBuilder sb)
+    public void ToProperty(StringBuilder sb, GeneratorSettings settings)
     {
         if (Summary is not null)
         {
             sb.Append($$"""
                 /// <summary>
-                /// {{{System.Security.SecurityElement.Escape(Summary.ReplaceLineEndings("\n    /// "))}}
+                /// {{System.Security.SecurityElement.Escape(Summary.ReplaceLineEndings("\n    /// "))}}
                 /// </summary>
             
             """);
@@ -80,7 +84,7 @@ public class ClassProperty
         {
             sb.Append($$"""
                 /// <remarks>
-                /// {{{System.Security.SecurityElement.Escape(Remarks.ReplaceLineEndings("\n    /// "))}}
+                /// {{System.Security.SecurityElement.Escape(Remarks.ReplaceLineEndings("\n    /// "))}}
                 /// </remarks>
             
             """);
@@ -95,9 +99,12 @@ public class ClassProperty
         """);
         if (!Required)
         {
+            if (settings.JsonAttributes)
+            {
+                sb.Append("\t[JsonIgnore]");
+            }
             sb.Append($$"""
                 [XmlIgnore]
-                [JsonIgnore]
                 public bool {{Name}}Specified => {{Name}} != null;
             
             """);

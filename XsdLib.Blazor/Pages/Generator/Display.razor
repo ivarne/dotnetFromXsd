@@ -1,0 +1,79 @@
+@using System.Text
+@using System.Xml
+
+@inject IJSRuntime JS
+@using System.Xml.Schema
+
+@if(IsValidSelection())
+{
+<p>Schema set loaded @SchemaSet.Count (@GetContent().Split('\n').Count() lines)</p>
+
+<button @onclick="DownloadFileFromStream">
+    Download File From Stream
+</button>
+
+<pre style="background-color: rgb(211, 211, 211); border: 1px solid black; padding: 15px">@GetContent()</pre>
+}
+else
+{
+    <pre>Invalid selection:
+@(string.Join("\n",RootClassNames))
+</pre>
+}
+@code{
+    [Parameter, EditorRequired]
+    public required XmlSchemaSet SchemaSet { get; set; }
+
+    [Parameter, EditorRequired]
+    public required GeneratorSettings Settings { get; set; }
+
+    [Parameter, EditorRequired]
+    public required List<string> RootClassNames { get; set; }
+
+    private XsdLib.Generator GetGenerator() => new (SchemaSet, Settings);
+
+    private IEnumerable<ClassModel> GetRootClasses()
+    {
+        var generator = GetGenerator();
+        return RootClassNames.Select(name => {
+            return generator.Generate(name);
+        });
+    }
+
+    private string GetContent()
+    {
+        var sb = new StringBuilder();
+        foreach(var root in GetRootClasses())
+        {
+            sb.AppendLine(StringGenerator.ToClass(root, Settings));
+        }
+        return sb.ToString();
+    }
+
+    private Stream GetFileStream()
+    {
+        var randomBinaryData = Encoding.UTF8.GetBytes(GetContent());
+        var fileStream = new MemoryStream(randomBinaryData);
+
+        return fileStream;
+    }
+
+    private async Task DownloadFileFromStream()
+    {
+        var fileStream = GetFileStream();
+        var fileName = "xsd.cs";
+
+        using var streamRef = new DotNetStreamReference(stream: fileStream);
+
+        await JS.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
+    }
+
+    private bool IsValidSelection()
+    {
+        var generator = GetGenerator();
+        return !RootClassNames.Any(name =>
+        {
+            return generator.GetElementByName(name) is null;
+        });
+    }
+}

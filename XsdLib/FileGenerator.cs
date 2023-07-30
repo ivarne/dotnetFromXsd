@@ -11,12 +11,14 @@ public class FileGenerator
     private readonly List<ClassModel> _rootModels;
     private readonly string _versionFolder;
     private readonly string _versionNamespace;
+    private readonly GeneratorSettings _settings;
 
-    public FileGenerator(string versionNamespace, string versionFolder, List<ClassModel> rootModels)
+    public FileGenerator(string versionNamespace, string versionFolder, List<ClassModel> rootModels, GeneratorSettings settings)
     {
         _versionFolder = versionFolder;
         _versionNamespace = versionNamespace;
         _rootModels = rootModels;
+        _settings = settings;
         foreach (var model in rootModels)
         {
             _initializeReferenceCountRecursive(model);
@@ -57,7 +59,7 @@ public class FileGenerator
         };
         await RecurseProperties(classModel, classModels);
 
-        var cSharpCode = FormatCsharpFile( classModels);
+        var cSharpCode = FormatCsharpFile(classModels);
         await File.WriteAllTextAsync(Path.Join(_versionFolder, $"{classModel.Name.Name}.cs"), cSharpCode, System.Text.Encoding.UTF8);
     }
 
@@ -92,7 +94,7 @@ public class FileGenerator
         sb.AppendLine();
         foreach (var cm in classModels)
         {
-            cm.ToClass(sb);
+            cm.ToClass(sb, _settings);
         }
         return sb.Replace("\r", "").ToString();
     }

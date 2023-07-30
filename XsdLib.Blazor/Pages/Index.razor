@@ -1,58 +1,39 @@
-﻿@using System.Xml
+﻿@using System.Linq
+@using System.Xml
 @using System.Xml.Schema
+@using XsdLib.Blazor.Pages.Generator
 @page "/"
 
 
-Last opp xsd fil
-<InputFile OnChange="@LoadFiles" multiple accept=".xsd"/>
+<SchemaSetLoader NewSchemaLoaded="NewSchemaLoaded" />
+@* <GeneratorSettingsEditor Settings="Settings"  /> *@
 
-@if(SchemaSet is not null)
-{
-    <p>Schema set loaded @SchemaSet.Count</p>
-    <ul>
-
-    @foreach(var element in SchemaSet.GlobalElements.Names)
-    {
-        <li>@element</li>
-    }
-    </ul>
-
-    
-}
-@if(Content is not null)
-{
-    <pre>@Content</pre>
+@if(SchemaSet is not null && RootElementNames is not null)
+{   
+    <SelectRootElements RootElements="RootElementNames" OnChange="(l)=>HandleSelectedRootElementChange(l)"/>
+    <Display SchemaSet="SchemaSet" Settings="Settings" RootClassNames="SelectedRootElements"/>
 }
 
 @code {
     private XmlSchemaSet? SchemaSet;
 
-    private string? Content;
+    private List<XmlQualifiedName>? RootElementNames;
+    
+    private List<string> SelectedRootElements = new();
 
-    private async Task LoadFiles(InputFileChangeEventArgs e)
+    private GeneratorSettings Settings = new();
+
+    private void NewSchemaLoaded(XmlSchemaSet schemaSet)
     {
-        SchemaSet = new XmlSchemaSet();
-
-        using var mStream = new MemoryStream();
-        await e.File.OpenReadStream(100000000000).CopyToAsync(mStream);
-        mStream.Seek(0, SeekOrigin.Begin);
-        using XmlReader reader = XmlReader.Create(mStream);
-
-        
-
-        SchemaSet.Add(null, reader);
-        SchemaSet.Compile();
-
-        var generator = new XsdLib.Generator(SchemaSet);
-
-        foreach(var name in SchemaSet.GlobalElements.Names)
-        {
-            Console.WriteLine(name.GetType().FullName);
-        }
-
-        var rootElementName = SchemaSet.GlobalElements.Names.OfType<XmlQualifiedName>().FirstOrDefault();
-        var rootClass = generator.Generate(rootElementName.Name);
-        
-        Content = StringGenerator.ToClass(rootClass);
+        SchemaSet = schemaSet;
+        RootElementNames = schemaSet.GlobalElements.Names.OfType<XmlQualifiedName>().ToList();
+    }
+    private void HandleSelectedRootElementChange(List<XmlQualifiedName> selectedRootElements)
+    {
+        SelectedRootElements = selectedRootElements.Select(n=>n.Name).ToList();
+    }
+    private void HandleSettingsChange(GeneratorSettings settings)
+    {
+        Settings = settings;
     }
 }

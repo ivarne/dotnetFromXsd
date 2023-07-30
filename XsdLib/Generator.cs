@@ -8,10 +8,12 @@ namespace XsdLib;
 public class Generator
 {
     private readonly XmlSchemaSet _schemaSet;
+    private readonly GeneratorSettings _settings;
 
-    public Generator(XmlSchemaSet schemaSet)
+    public Generator(XmlSchemaSet schemaSet, GeneratorSettings settings)
     {
         _schemaSet = schemaSet;
+        _settings = settings;
     }
     public ClassModel Generate(string rootElement)
     {
@@ -26,7 +28,11 @@ public class Generator
 
     public IEnumerable<string> GetMessageNames()
     {
-        foreach (var schemaObj in _schemaSet.Schemas())
+        return GetMessageNames(_schemaSet);
+    }
+    public  static IEnumerable<string> GetMessageNames(XmlSchemaSet schemaSet)
+    {
+        foreach (var schemaObj in schemaSet.Schemas())
         {
             if (schemaObj is XmlSchema schema)
             {
@@ -34,7 +40,8 @@ public class Generator
                 {
                     if (elementObj is XmlSchemaElement element)
                     {
-                        if (element.Name?.EndsWith("Message") == true)
+                        // if (element.Name?.EndsWith("Message") == true)
+                        if (element.Name is not null)
                         {
                             yield return element.Name;
                         }
@@ -56,12 +63,13 @@ public class Generator
                 Summary = GetSummary(element),
                 // Remarks = $"Xml namespace: {element.QualifiedName.Namespace}",
                 ClassProperties = new(),
+                IsRootClass = this._schemaSet.GlobalElements.Contains(element.QualifiedName),
             };
 
             cm.ClassProperties = GetClassProperties(elementSchemaType);
             return cm;
         }
-        throw new NotImplementedException("element.ElementSchemaType is not XmlSchemaComplexTpye");
+        throw new NotImplementedException("element.ElementSchemaType is not XmlSchemaComplexType");
     }
 
     private List<ClassProperty> GetClassProperties(XmlSchemaComplexType elementSchemaType)
@@ -76,7 +84,7 @@ public class Generator
                     var prop = GetClassProperty(element);
                     ret.Add(prop);
                 }
-                else if (item is XmlSchemaSequence reqursiveSequence)
+                else if (item is XmlSchemaSequence recursiveSequence)
                 {
                     // TODO!!!
                     // This seems to represent an array
@@ -109,7 +117,7 @@ public class Generator
                 }
                 else
                 {
-                    throw new NotImplementedException($"GetClassProperties not implemented for coice items of type: {item.GetType()}");
+                    throw new NotImplementedException($"GetClassProperties not implemented for choice items of type: {item.GetType()}");
                 }
             }
         }

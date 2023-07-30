@@ -1,0 +1,32 @@
+@using System.Xml
+@using System.Xml.Schema
+
+<div style="padding:20px; background-color: lightpink">
+    Last opp xsd <br>
+    <InputFile OnChange="@LoadFiles" multiple accept=".xsd"/>
+</div>
+
+@* TODO: Possibly load xsd pasted as text or uploaded as zip *@
+
+@code{
+    [Parameter]
+    public EventCallback<XmlSchemaSet> NewSchemaLoaded { get; set; }
+    private async Task LoadFiles(InputFileChangeEventArgs e)
+    {
+        var SchemaSet = new XmlSchemaSet();
+
+        foreach(var file in e.GetMultipleFiles(30))
+        {
+            using var mStream = new MemoryStream();
+            await file.OpenReadStream(10000000).CopyToAsync(mStream);
+            mStream.Seek(0, SeekOrigin.Begin);
+            using XmlReader reader = XmlReader.Create(mStream);
+            {
+                SchemaSet.Add(null, reader);
+            }
+        }
+        SchemaSet.Compile();
+
+        await NewSchemaLoaded.InvokeAsync(SchemaSet);
+    }
+}

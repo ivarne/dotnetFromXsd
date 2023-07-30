@@ -15,7 +15,7 @@ foreach (var version in versions)
     var versionNamespace = $"BaneNor.TafTap.Models.v{version_underscore}";
     var versionFolder = Path.Join("..", "BaneNor.TafTap.Models", $"v{version_underscore}");
     Directory.CreateDirectory(versionFolder);
-    Console.WriteLine($"Generationg TafTap modles for {version}");
+    Console.WriteLine($"Generating TafTap models for {version}");
     var generator = TafTapXsdReader.GetGeneratorForVersion(version);
     var rootClasses = new List<ClassModel>();
     if(rootElements.Count == 0)
