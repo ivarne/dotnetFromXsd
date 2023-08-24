@@ -1,4 +1,7 @@
 using System.Text;
+using System.Xml.Schema;
+using System.Xml.Serialization;
+using System.Xml.XPath;
 
 namespace XsdLib;
 
@@ -12,6 +15,7 @@ public class ClassModel
 
     public void ToClass(StringBuilder sb, GeneratorSettings settings)
     {
+        sb.AppendLine("\n"); // Two empty lines before class definition (between namespace or previous class)
         if (Summary is not null)
         {
             sb.Append($$"""
@@ -53,7 +57,6 @@ public class ClassModel
             }
             prop.ToProperty(sb, settings);
         }
-        sb.Append("}\n\n");
     }
 }
 
@@ -64,7 +67,7 @@ public class ClassProperty
     public required string Name { get; set; }
     public required bool Required { get; set; }
     public required decimal MaxOccurs { get; set; } = 1;
-    public IEnumerable<string> ClassPropertyAttributes { get; set; } = Enumerable.Empty<string>();
+    public AttributeData[] Attributes { get; set; } = Array.Empty<AttributeData>();
     public string? Summary { get; set; }
     public string? Remarks { get; set; }
 
@@ -89,9 +92,9 @@ public class ClassProperty
             
             """);
         }
-        foreach (var attr in ClassPropertyAttributes)
+        foreach (var attr in Attributes)
         {
-            sb.Append($"    {attr}\n");
+            sb.Append($"    [{attr.ToAttr()}]\n");
         }
         sb.Append($$"""
             public {{(Required ? "required " : "")}}{{GetFullType()}}{{(Required ? "" : "?")}} {{Name}} { get; set; }
@@ -122,5 +125,117 @@ public class ClassProperty
         // sb.Append(" ");
         // sb.Append(Name);
         // sb.Append(" { get; set; }\n");
+    }
+}
+
+public record AttributeData(string Name)
+{
+    private List<AttributeDataConstructorArgument> ConstructorArguments { get; set; } = new List<AttributeDataConstructorArgument>();
+    public void Add(string name, string value) => ConstructorArguments.Add(new(name, value));
+
+    public string? ToAttr()
+    {
+        if (ConstructorArguments.Count == 0)
+        {
+            return Name;
+        }
+        var sb = new StringBuilder();
+        sb.Append(Name);
+        sb.Append("(");
+        var iter = 0;
+        foreach (var ca in ConstructorArguments)
+        {
+            if (iter++ != 0)
+            {
+                sb.Append(", ");
+            }
+            sb.Append(ca.Name);
+            sb.Append(" = ");
+            sb.Append(ca.Value);
+        }
+        sb.Append(")");
+        return sb.ToString();
+    }
+}
+public record AttributeDataConstructorArgument(string Name, string Value);
+
+
+public record XmlElementAttributeData() : AttributeData("XmlElement")
+{
+    public XmlTypeCode? DataType
+    {
+        init
+        {
+            if (value is not null and not XmlTypeCode.String and not XmlTypeCode.None)
+                Add("DataType", $"\"{value}\"");
+        }
+    }
+    public string? ElementName
+    {
+        init
+        {
+            if (value is not null)
+                Add("ElementName", $"\"{value}\"");
+        }
+    }
+    public XmlSchemaForm? Form
+    {
+        init
+        {
+            if (value is not null)
+                Add("Form", $"XmlSchemaForm.{value}");
+        }
+    }
+    public bool? IsNullable
+    {
+        init
+        {
+            if (value is not null)
+                Add("IsNullable", $"{value}");
+        }
+    }
+    public string? Namespace
+    {
+        init
+        {
+            if (value is not null)
+                Add("Namespace", $"\"{value}\"");
+        }
+    }
+    public int? Order
+    {
+        init
+        {
+            if (value is not null)
+                Add("Order", $"{value}");
+        }
+    }
+    public Type? Type
+    {
+        init
+        {
+            if (value is not null)
+                Add("Type", $"typeof({value})");
+        }
+    }
+}
+
+public record XmlTextAttributeData() : AttributeData("XmlText")
+{
+    public XmlTypeCode? DataType
+    {
+        init
+        {
+            if (value is not null)
+                Add("DataType", $"\"{value}\"");
+        }
+    }
+    public Type? Type
+    {
+        init
+        {
+            if (value is not null)
+                Add("Type", $"typeof({value})");
+        }
     }
 }

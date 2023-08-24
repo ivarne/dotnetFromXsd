@@ -1,7 +1,8 @@
-using System.Xml.Schema;
-using System.Linq;
 using System.Text;
 using System.Xml;
+using System.Xml.Schema;
+using System.Xml.Serialization;
+
 
 namespace XsdLib;
 
@@ -86,8 +87,20 @@ public class Generator
                 }
                 else if (item is XmlSchemaSequence recursiveSequence)
                 {
-                    // TODO!!!
-                    // This seems to represent an array
+                    foreach (var rItem in recursiveSequence.Items)
+                    {
+                        if (rItem is XmlSchemaElement rElement)
+                        {
+                            var prop = GetClassProperty(rElement);
+                            prop.MaxOccurs = recursiveSequence.MaxOccurs;
+                            prop.Required = recursiveSequence.MinOccurs > 0;
+                            ret.Add(prop);
+                        }
+                        else
+                        {
+                            throw new NotImplementedException($"only elements supported in recursive sequences. Found {rItem?.GetType()}");
+                        }
+                    }
                 }
                 else if (item is XmlSchemaChoice itemChoice)
                 {
@@ -117,7 +130,7 @@ public class Generator
                 }
                 else
                 {
-                    throw new NotImplementedException($"GetClassProperties not implemented for choice items of type: {item.GetType()}");
+                    throw new NotImplementedException($"GetClassProperties not implemented for coice items of type: {item.GetType()}");
                 }
             }
         }
@@ -131,10 +144,12 @@ public class Generator
                 // Summary = GetSummary(simpleContent),
                 Remarks = GetRestrictionsAsString(simpleContent),
                 Type = GetSimpleDataType(simpleContent),
-                ClassPropertyAttributes = new string[]
-                {
-                    "[XmlText]"
-                }
+                Attributes = new AttributeData[]{
+                    new XmlTextAttributeData()
+                    {
+                        DataType = simpleContent.Datatype?.TypeCode
+                    }
+                },
             });
             foreach (var attributeObj in elementSchemaType.AttributeUses.Values)
             {
@@ -143,15 +158,20 @@ public class Generator
                     ret.Add(new()
                     {
                         Name = attribute.QualifiedName.Name,
-                        Type = GetSimpleDataType(attribute.AttributeSchemaType),
+                        Type = "string", // attributes can't be nullable value types (int, long, DateTime), so just make everything string
                         MaxOccurs = 1,
                         Required = attribute.Use == XmlSchemaUse.Required,
                         // TODO:!
                         // Summary = 
                         // Remarks =
-                        ClassPropertyAttributes = new string[]
+                        Attributes = new AttributeData[]
                         {
-                            $$"""[XmlAttribute(Namespace = "{{attribute.QualifiedName.Namespace}}", Form = System.Xml.Schema.XmlSchemaForm.Qualified)]"""
+                            new XmlElementAttributeData()
+                            {
+                                Namespace = attribute.QualifiedName.Namespace,
+                                Form = XmlSchemaForm.Qualified,
+                                DataType = attribute.AttributeSchemaType?.TypeCode
+                            },
                         }
                     });
                 }
@@ -170,6 +190,28 @@ public class Generator
         switch (element.ElementSchemaType)
         {
             case XmlSchemaComplexType ct:
+                if(ct.BaseXmlSchemaType is XmlSchemaSimpleType simpleContent && ct.AttributeUses.Count == 0)
+                {
+                    // A complex type with a single attribute free content, should just be a single property, not a class with a .Value property
+                    return new()
+                    {
+                        Name = element.QualifiedName.Name,
+                        Type = GetSimpleDataType(simpleContent),
+                        Summary = GetSummary(element),
+                        Remarks = GetRestrictionsAsString(simpleContent),
+                        Required = element.MinOccurs > 0,
+                        MaxOccurs = element.MaxOccurs,
+                        Attributes = new AttributeData[]
+                        {
+                            new XmlElementAttributeData()
+                            {
+                                DataType = simpleContent.Datatype?.TypeCode
+                            },
+                            // $"""[JsonPropertyName("{char.ToLowerInvariant(element.QualifiedName.Name[0])}{element.QualifiedName.Name.Substring(1)}")]""",
+                        }
+                    };
+                }
+
                 var classModel = AddClassModel(element);
                 return new()
                 {
@@ -179,14 +221,11 @@ public class Generator
                     Summary = GetSummary(element),
                     Required = element.MinOccurs > 0,
                     MaxOccurs = element.MaxOccurs,
-                    ClassPropertyAttributes = new string[]
+                    Attributes = new AttributeData[]
                     {
-                        // $"[XmlElement(IsNullable={( element.MinOccurs == 0 ? "true" : "false")})]",
-                        // $"[XmlElement(IsNullable={(element.IsNillable ?"true": "false")})]",
-                        // $"[XmlElement(IsNullable=true)]",
-                        $"[XmlElement]",
-						// $"""[JsonPropertyName("{char.ToLowerInvariant(element.QualifiedName.Name[0])}{element.QualifiedName.Name.Substring(1)}")]""",
-					}
+                        new XmlElementAttributeData()
+                        // $"""[JsonPropertyName("{char.ToLowerInvariant(element.QualifiedName.Name[0])}{element.QualifiedName.Name.Substring(1)}")]""",
+                    }
                 };
             case XmlSchemaSimpleType st:
                 // var rootElementDefinition = GetElementByName(element.QualifiedName);
@@ -198,13 +237,14 @@ public class Generator
                     Remarks = GetRestrictionsAsString(st),
                     Required = element.MinOccurs > 0,
                     MaxOccurs = element.MaxOccurs,
-                    ClassPropertyAttributes = new string[]
+                    Attributes = new AttributeData[]
                     {
-                        // $"[XmlElement(IsNullable={( element.MinOccurs == 0 ? "true" : "false")})]",
-                        // $"[XmlElement(IsNullable=true)]",
-                        "[XmlElement]",
-						// $"""[JsonPropertyName("{char.ToLowerInvariant(element.QualifiedName.Name[0])}{element.QualifiedName.Name.Substring(1)}")]""",
-					}
+                        new XmlElementAttributeData()
+                        {
+                            DataType = st.Datatype?.TypeCode
+                        },
+                        // $"""[JsonPropertyName("{char.ToLowerInvariant(element.QualifiedName.Name[0])}{element.QualifiedName.Name.Substring(1)}")]""",
+                    }
                 };
             default:
                 throw new NotImplementedException($"Unknown schema property type {element.ElementSchemaType?.GetType()}");
