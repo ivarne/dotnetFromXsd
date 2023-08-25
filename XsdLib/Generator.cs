@@ -166,7 +166,7 @@ public class Generator
                         // Remarks =
                         Attributes = new AttributeData[]
                         {
-                            new XmlElementAttributeData()
+                            new XmlAttributeAttributeData()
                             {
                                 Namespace = attribute.QualifiedName.Namespace,
                                 Form = XmlSchemaForm.Qualified,
@@ -325,15 +325,15 @@ public class Generator
             XmlTypeCode.String => "string",
             XmlTypeCode.Text => "string",
             XmlTypeCode.Token => "string",
-            XmlTypeCode.Integer => "long",
+            XmlTypeCode.Integer => "string",
             XmlTypeCode.Double => "double",
-            XmlTypeCode.Short => "int",
-            XmlTypeCode.PositiveInteger => "int",
+            XmlTypeCode.Short => "short",
+            XmlTypeCode.PositiveInteger => "string",
             XmlTypeCode.Decimal => "decimal",
             XmlTypeCode.Float => "float",
             XmlTypeCode.Boolean => "bool",
             XmlTypeCode.Int => "int",
-            XmlTypeCode.Time => "string",
+            XmlTypeCode.Time => "DateTime",
             XmlTypeCode.Byte => "byte",
             XmlTypeCode.GYear => "int",
 

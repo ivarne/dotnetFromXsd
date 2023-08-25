@@ -34,10 +34,10 @@ public class ClassModel
             
             """);
         }
-        sb.AppendLine($"""[XmlType(AnonymousType=true, Namespace = "{Name.Namespace}")]""");
+        sb.AppendLine($"""[XmlType(AnonymousType = true, Namespace = "{Name.Namespace}")]""");
         if (IsRootClass)
         {
-            sb.AppendLine($"""[XmlRoot(Namespace = "{Name.Namespace}", IsNullable=false)]""");
+            sb.AppendLine($"""[XmlRoot(Namespace = "{Name.Namespace}", IsNullable = false)]""");
         }
         sb.Append($$"""
         public class {{Name.Name}}
@@ -57,6 +57,7 @@ public class ClassModel
             }
             prop.ToProperty(sb, settings);
         }
+        sb.Append("}");
     }
 }
 
@@ -102,15 +103,12 @@ public class ClassProperty
         """);
         if (!Required)
         {
+            sb.AppendLine("    [XmlIgnore]");
             if (settings.JsonAttributes)
             {
-                sb.Append("\t[JsonIgnore]");
+                sb.AppendLine("    [JsonIgnore]");
             }
-            sb.Append($$"""
-                [XmlIgnore]
-                public bool {{Name}}Specified => {{Name}} != null;
-            
-            """);
+            sb.AppendLine($"    public bool {Name}Specified => {Name} != null;");
         }
         // sb.Append("    public ");
         // if (Required)
@@ -131,7 +129,11 @@ public class ClassProperty
 public record AttributeData(string Name)
 {
     private List<AttributeDataConstructorArgument> ConstructorArguments { get; set; } = new List<AttributeDataConstructorArgument>();
-    public void Add(string name, string value) => ConstructorArguments.Add(new(name, value));
+    public void Add(string name, string? value)
+    {
+        if (value is not null)
+            ConstructorArguments.Add(new(name, value));
+    }
 
     public string? ToAttr()
     {
@@ -166,8 +168,7 @@ public record XmlElementAttributeData() : AttributeData("XmlElement")
     {
         init
         {
-            if (value is not null and not XmlTypeCode.String and not XmlTypeCode.None)
-                Add("DataType", $"\"{value}\"");
+            Add("DataType", value.ToDataType());
         }
     }
     public string? ElementName
@@ -183,7 +184,7 @@ public record XmlElementAttributeData() : AttributeData("XmlElement")
         init
         {
             if (value is not null)
-                Add("Form", $"XmlSchemaForm.{value}");
+                Add("Form", $"System.Xml.Schema.XmlSchemaForm.{value}");
         }
     }
     public bool? IsNullable
@@ -219,6 +220,49 @@ public record XmlElementAttributeData() : AttributeData("XmlElement")
         }
     }
 }
+public record XmlAttributeAttributeData() : AttributeData("XmlAttribute")
+{
+    public XmlTypeCode? DataType
+    {
+        init
+        {
+            Add("DataType", value.ToDataType());
+        }
+    }
+    public string? AttributeName
+    {
+        init
+        {
+            if (value is not null)
+                Add("AttributeName", $"\"{value}\"");
+        }
+    }
+    public XmlSchemaForm? Form
+    {
+        init
+        {
+            if (value is not null)
+                Add("Form", $"System.Xml.Schema.XmlSchemaForm.{value}");
+        }
+    }
+    public string? Namespace
+    {
+        init
+        {
+            if (value is not null)
+                Add("Namespace", $"\"{value}\"");
+        }
+    }
+
+    public Type? Type
+    {
+        init
+        {
+            if (value is not null)
+                Add("Type", $"typeof({value})");
+        }
+    }
+}
 
 public record XmlTextAttributeData() : AttributeData("XmlText")
 {
@@ -226,8 +270,7 @@ public record XmlTextAttributeData() : AttributeData("XmlText")
     {
         init
         {
-            if (value is not null)
-                Add("DataType", $"\"{value}\"");
+            Add("DataType", value.ToDataType());
         }
     }
     public Type? Type
@@ -238,4 +281,56 @@ public record XmlTextAttributeData() : AttributeData("XmlText")
                 Add("Type", $"typeof({value})");
         }
     }
+}
+
+public static class XmlTypeCodeExtentions
+{
+    public static string? ToDataType(this XmlTypeCode? xmlTypeCode)
+        => xmlTypeCode switch
+        {
+            XmlTypeCode.AnyUri => "\"anyURI\"",
+            XmlTypeCode.Base64Binary => "\"base64Binary\"",
+            XmlTypeCode.Boolean => "\"boolean\"",
+            XmlTypeCode.Byte => "\"byte\"",
+            XmlTypeCode.Date => "\"date\"",
+            XmlTypeCode.DateTime => "\"dateTime\"",
+            XmlTypeCode.Decimal => "\"decimal\"",
+            XmlTypeCode.Double => "\"double\"",
+            XmlTypeCode.Entity => "\"ENTITY\"",
+            XmlTypeCode.Float => "\"float\"",
+            XmlTypeCode.GDay => "\"gDay\"",
+            XmlTypeCode.GMonth => "\"gMonth\"",
+            XmlTypeCode.GMonthDay => "\"gMonthDay\"",
+            XmlTypeCode.GYear => "\"gYear\"",
+            XmlTypeCode.GYearMonth => "\"gYearMonth\"",
+            XmlTypeCode.HexBinary => "\"hexBinary\"",
+            XmlTypeCode.Id => "\"ID\"",
+            XmlTypeCode.Idref => "\"IDREF\"",
+            XmlTypeCode.Int => "\"int\"",
+            XmlTypeCode.Integer => "\"integer\"",
+            XmlTypeCode.Language => "\"language\"",
+            XmlTypeCode.Long => "\"long\"",
+            XmlTypeCode.Name => "\"Name\"",
+            XmlTypeCode.NCName => "\"NCName\"",
+            XmlTypeCode.NegativeInteger => "\"negativeInteger\"",
+            XmlTypeCode.NmToken => "\"NMTOKEN\"",
+            XmlTypeCode.NormalizedString => "\"normalizedString\"",
+            XmlTypeCode.NonNegativeInteger => "\"nonNegativeInteger\"",
+            XmlTypeCode.NonPositiveInteger => "\"nonPositiveInteger\"",
+            XmlTypeCode.Notation => "\"NOTATION\"",
+            XmlTypeCode.PositiveInteger => "\"positiveInteger\"",
+            XmlTypeCode.QName => "\"QName\"",
+            XmlTypeCode.Duration => "\"duration\"",
+            // Ignore string, it's the default type anyway
+            // XmlTypeCode.String => "\"string\"",
+            XmlTypeCode.Short => "\"short\"",
+            XmlTypeCode.Time => "\"time\"",
+            XmlTypeCode.Token => "\"token\"",
+            XmlTypeCode.UnsignedByte => "\"unsignedByte\"",
+            XmlTypeCode.UnsignedInt => "\"unsignedInt\"",
+            XmlTypeCode.UnsignedLong => "\"unsignedLong\"",
+            XmlTypeCode.UnsignedShort => "\"unsignedShort\"",
+            _ => null,
+        };
+
 }
