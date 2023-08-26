@@ -318,6 +318,7 @@ public class Generator
 
     private static string GetSimpleDataType(XmlSchemaSimpleType st)
     {
+        //See: https://learn.microsoft.com/en-us/dotnet/api/system.xml.serialization.xmlelementattribute.datatype?view=net-7.0#system-xml-serialization-xmlelementattribute-datatype
         return st.Datatype?.TypeCode switch
         {
             XmlTypeCode.DateTime => "DateTime",
@@ -335,8 +336,33 @@ public class Generator
             XmlTypeCode.Int => "int",
             XmlTypeCode.Time => "DateTime",
             XmlTypeCode.Byte => "byte",
-            XmlTypeCode.GYear => "int",
-
+            XmlTypeCode.GYear => "string",
+            XmlTypeCode.AnyUri => "string",
+            XmlTypeCode.Base64Binary => "byte[]",
+            XmlTypeCode.Entity => "string",
+            XmlTypeCode.GDay => "string",
+            XmlTypeCode.GMonth => "string",
+            XmlTypeCode.GMonthDay => "string",
+            XmlTypeCode.GYearMonth => "string",
+            XmlTypeCode.HexBinary => "byte[]",
+            XmlTypeCode.Id => "string",
+            XmlTypeCode.Idref => "string",
+            XmlTypeCode.Language => "string",
+            XmlTypeCode.Long => "long",
+            XmlTypeCode.Name => "string",
+            XmlTypeCode.NCName => "string",
+            XmlTypeCode.NegativeInteger => "string",
+            XmlTypeCode.NmToken => "string",
+            XmlTypeCode.NormalizedString => "string",
+            XmlTypeCode.NonNegativeInteger => "string",
+            XmlTypeCode.NonPositiveInteger => "string",
+            XmlTypeCode.Notation => "string",
+            XmlTypeCode.QName => "System.Xml.XmlQualifiedName",
+            XmlTypeCode.Duration => "string",
+            XmlTypeCode.UnsignedByte => "byte",
+            XmlTypeCode.UnsignedInt => "uint",
+            XmlTypeCode.UnsignedLong => "ulong",
+            XmlTypeCode.UnsignedShort => "ushort",
             _ => throw new NotImplementedException($"{st.Datatype?.TypeCode} is not implemented")
         };
     }
