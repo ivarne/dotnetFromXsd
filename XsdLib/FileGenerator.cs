@@ -45,7 +45,7 @@ public class FileGenerator
 
     public async Task WriteFiles()
     {
-        foreach(var model in _rootModels)
+        foreach (var model in _rootModels)
         {
             await GenerateFile(model);
         }

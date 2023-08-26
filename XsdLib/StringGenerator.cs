@@ -14,9 +14,9 @@ public static class StringGenerator
     public static void ToClassRecursive(ClassModel element, StringBuilder sb, GeneratorSettings settings)
     {
         element.ToClass(sb, settings);
-        foreach(var prop in element.ClassProperties)
+        foreach (var prop in element.ClassProperties)
         {
-            if(prop.ClassType is ClassModel cm)
+            if (prop.ClassType is ClassModel cm)
             {
                 ToClassRecursive(cm, sb, settings);
             }

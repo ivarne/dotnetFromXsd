@@ -31,7 +31,7 @@ public class Generator
     {
         return GetMessageNames(_schemaSet);
     }
-    public  static IEnumerable<string> GetMessageNames(XmlSchemaSet schemaSet)
+    public static IEnumerable<string> GetMessageNames(XmlSchemaSet schemaSet)
     {
         foreach (var schemaObj in schemaSet.Schemas())
         {
@@ -190,7 +190,7 @@ public class Generator
         switch (element.ElementSchemaType)
         {
             case XmlSchemaComplexType ct:
-                if(ct.BaseXmlSchemaType is XmlSchemaSimpleType simpleContent && ct.AttributeUses.Count == 0)
+                if (ct.BaseXmlSchemaType is XmlSchemaSimpleType simpleContent && ct.AttributeUses.Count == 0)
                 {
                     // A complex type with a single attribute free content, should just be a single property, not a class with a .Value property
                     return new()
