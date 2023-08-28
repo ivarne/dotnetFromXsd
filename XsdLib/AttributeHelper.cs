@@ -1,20 +1,22 @@
 using System.Text;
 using System.Xml.Schema;
+using XsdLib.Utils;
 
 namespace XsdLib;
 
-public record AttributeData(string Name)
+public abstract record AttributeData(string Name)
 {
-    private List<AttributeDataConstructorArgument> ConstructorArguments { get; set; } = new List<AttributeDataConstructorArgument>();
+    protected virtual IEnumerable<string> PositionalConstructorArguments => Enumerable.Empty<string>();
+    private List<NamedConstructorArgument> NamedConstructorArguments { get; set; } = new List<NamedConstructorArgument>();
     public void Add(string name, string? value)
     {
         if (value is not null)
-            ConstructorArguments.Add(new(name, value));
+            NamedConstructorArguments.Add(new(name, value));
     }
 
     public string? ToAttr()
     {
-        if (ConstructorArguments.Count == 0)
+        if (NamedConstructorArguments.Count == 0 && !PositionalConstructorArguments.Any())
         {
             return Name;
         }
@@ -22,7 +24,15 @@ public record AttributeData(string Name)
         sb.Append(Name);
         sb.Append("(");
         var iter = 0;
-        foreach (var ca in ConstructorArguments)
+        foreach (var argument in PositionalConstructorArguments)
+        {
+            if (iter++ != 0)
+            {
+                sb.Append(", ");
+            }
+            sb.Append(argument);
+        }
+        foreach (var ca in NamedConstructorArguments)
         {
             if (iter++ != 0)
             {
@@ -36,7 +46,7 @@ public record AttributeData(string Name)
         return sb.ToString();
     }
 }
-public record AttributeDataConstructorArgument(string Name, string Value);
+public record NamedConstructorArgument(string Name, string Value);
 
 
 public record XmlElementAttributeData() : AttributeData("XmlElement")
@@ -45,7 +55,7 @@ public record XmlElementAttributeData() : AttributeData("XmlElement")
     {
         init
         {
-            Add("DataType", value.ToDataType());
+            Add("DataType", XmlTypeCodeExtentions.ToDataType(value));
         }
     }
     public string? ElementName
@@ -93,7 +103,7 @@ public record XmlElementAttributeData() : AttributeData("XmlElement")
         init
         {
             if (value is not null)
-                Add("Type", $"typeof({value})");
+                Add("Type", $"typeof({value.FullName})");
         }
     }
 }
@@ -103,7 +113,7 @@ public record XmlAttributeAttributeData() : AttributeData("XmlAttribute")
     {
         init
         {
-            Add("DataType", value.ToDataType());
+            Add("DataType", XmlTypeCodeExtentions.ToDataType(value));
         }
     }
     public string? AttributeName
@@ -136,7 +146,7 @@ public record XmlAttributeAttributeData() : AttributeData("XmlAttribute")
         init
         {
             if (value is not null)
-                Add("Type", $"typeof({value})");
+                Add("Type", $"typeof({value.FullName})");
         }
     }
 }
@@ -147,7 +157,7 @@ public record XmlTextAttributeData() : AttributeData("XmlText")
     {
         init
         {
-            Add("DataType", value.ToDataType());
+            Add("DataType", XmlTypeCodeExtentions.ToDataType(value));
         }
     }
     public Type? Type
@@ -160,3 +170,33 @@ public record XmlTextAttributeData() : AttributeData("XmlText")
     }
 }
 
+public abstract record DataAnnotationsAttribute(string name) : AttributeData(name);
+
+public record RegularExpressionAttribute(string RegularExpression) : DataAnnotationsAttribute("RegularExpression")
+{
+    protected override IEnumerable<string> PositionalConstructorArguments
+    {
+        get
+        {
+            yield return $"@\"{RegularExpression.Replace("\"", "\\\"")}\"";
+        }
+    }
+}
+
+public record StringLengthAttribute(int max) : DataAnnotationsAttribute("StringLength")
+{
+    protected override IEnumerable<string> PositionalConstructorArguments
+    {
+        get
+        {
+            yield return max.ToString();
+        }
+    }
+    public int? MinimumLength
+    {
+        init
+        {
+            Add("MinimumLength", value?.ToString());
+        }
+    }
+}

@@ -2,7 +2,7 @@ using System.Text;
 using System.Xml;
 using System.Xml.Schema;
 using System.Xml.Serialization;
-
+using XsdLib.Utils;
 
 namespace XsdLib;
 
@@ -136,6 +136,7 @@ public class Generator
         }
         else if (elementSchemaType.BaseXmlSchemaType is XmlSchemaSimpleType simpleContent)
         {
+            var typeCode1 = XmlTypeCodeExtentions.GetTypeCodeFromSimpleType(simpleContent);
             ret.Add(new()
             {
                 Name = "Value",
@@ -143,11 +144,11 @@ public class Generator
                 Required = true,
                 // Summary = GetSummary(simpleContent),
                 Remarks = GetRestrictionsAsString(simpleContent),
-                Type = GetSimpleDataType(simpleContent),
+                Type = XmlTypeCodeExtentions.ToClrType(typeCode1),
                 Attributes = new AttributeData[]{
                     new XmlTextAttributeData()
                     {
-                        DataType = simpleContent.Datatype?.TypeCode
+                        DataType = typeCode1
                     }
                 },
             });
@@ -193,10 +194,11 @@ public class Generator
                 if (ct.BaseXmlSchemaType is XmlSchemaSimpleType simpleContent && ct.AttributeUses.Count == 0)
                 {
                     // A complex type with a single attribute free content, should just be a single property, not a class with a .Value property
+                    var typeCode = XmlTypeCodeExtentions.GetTypeCodeFromSimpleType(simpleContent);
                     return new()
                     {
                         Name = element.QualifiedName.Name,
-                        Type = GetSimpleDataType(simpleContent),
+                        Type = XmlTypeCodeExtentions.ToClrType(typeCode),
                         Summary = GetSummary(element),
                         Remarks = GetRestrictionsAsString(simpleContent),
                         Required = element.MinOccurs > 0,
@@ -205,7 +207,7 @@ public class Generator
                         {
                             new XmlElementAttributeData()
                             {
-                                DataType = simpleContent.Datatype?.TypeCode
+                                DataType = typeCode
                             },
                             // $"""[JsonPropertyName("{char.ToLowerInvariant(element.QualifiedName.Name[0])}{element.QualifiedName.Name.Substring(1)}")]""",
                         }
@@ -229,10 +231,11 @@ public class Generator
                 };
             case XmlSchemaSimpleType st:
                 // var rootElementDefinition = GetElementByName(element.QualifiedName);
+                var tc = XmlTypeCodeExtentions.GetTypeCodeFromSimpleType(st);
                 return new()
                 {
                     Name = element.QualifiedName.Name,
-                    Type = GetSimpleDataType(st),
+                    Type = XmlTypeCodeExtentions.ToClrType(tc),
                     Summary = GetSummary(element),
                     Remarks = GetRestrictionsAsString(st),
                     Required = element.MinOccurs > 0,
@@ -241,13 +244,37 @@ public class Generator
                     {
                         new XmlElementAttributeData()
                         {
-                            DataType = st.Datatype?.TypeCode
+                            DataType = tc
                         },
                         // $"""[JsonPropertyName("{char.ToLowerInvariant(element.QualifiedName.Name[0])}{element.QualifiedName.Name.Substring(1)}")]""",
                     }
                 };
             default:
                 throw new NotImplementedException($"Unknown schema property type {element.ElementSchemaType?.GetType()}");
+        }
+
+    }
+
+    private static IEnumerable<AttributeData> GetDataAnnotationAttributes(XmlSchemaSimpleTypeRestriction? restriction)
+    {
+        if (restriction is null) yield break;
+
+        // Turn Max/MinLengthFacet into [StringLength(...)]
+        var maxLengthS = restriction.Facets.OfType<XmlSchemaMaxLengthFacet>().FirstOrDefault()?.Value;
+        if (int.TryParse(maxLengthS, out int maxLength))
+        {
+            var minLengthS = restriction.Facets.OfType<XmlSchemaMinLengthFacet>().FirstOrDefault()?.Value;
+            yield return new StringLengthAttribute(maxLength)
+            {
+                MinimumLength = int.TryParse(minLengthS, out var minLength) ? minLength : null
+            };
+        }
+
+        // Turn PatternFacet into [RegularExpression()]
+        var regex = restriction.Facets.OfType<XmlSchemaPatternFacet>().FirstOrDefault()?.Value;
+        if (regex is not null)
+        {
+            yield return new RegularExpressionAttribute(regex);
         }
 
     }
@@ -316,56 +343,6 @@ public class Generator
         return sb.Length > 0 ? sb.ToString().Trim() : null;
     }
 
-    private static string GetSimpleDataType(XmlSchemaSimpleType st)
-    {
-        //See: https://learn.microsoft.com/en-us/dotnet/api/system.xml.serialization.xmlelementattribute.datatype?view=net-7.0#system-xml-serialization-xmlelementattribute-datatype
-        return st.Datatype?.TypeCode switch
-        {
-            XmlTypeCode.DateTime => "DateTime",
-            XmlTypeCode.Date => "DateTime",
-            XmlTypeCode.String => "string",
-            XmlTypeCode.Text => "string",
-            XmlTypeCode.Token => "string",
-            XmlTypeCode.Integer => "string",
-            XmlTypeCode.Double => "double",
-            XmlTypeCode.Short => "short",
-            XmlTypeCode.PositiveInteger => "string",
-            XmlTypeCode.Decimal => "decimal",
-            XmlTypeCode.Float => "float",
-            XmlTypeCode.Boolean => "bool",
-            XmlTypeCode.Int => "int",
-            XmlTypeCode.Time => "DateTime",
-            XmlTypeCode.Byte => "byte",
-            XmlTypeCode.GYear => "string",
-            XmlTypeCode.AnyUri => "string",
-            XmlTypeCode.Base64Binary => "byte[]",
-            XmlTypeCode.Entity => "string",
-            XmlTypeCode.GDay => "string",
-            XmlTypeCode.GMonth => "string",
-            XmlTypeCode.GMonthDay => "string",
-            XmlTypeCode.GYearMonth => "string",
-            XmlTypeCode.HexBinary => "byte[]",
-            XmlTypeCode.Id => "string",
-            XmlTypeCode.Idref => "string",
-            XmlTypeCode.Language => "string",
-            XmlTypeCode.Long => "long",
-            XmlTypeCode.Name => "string",
-            XmlTypeCode.NCName => "string",
-            XmlTypeCode.NegativeInteger => "string",
-            XmlTypeCode.NmToken => "string",
-            XmlTypeCode.NormalizedString => "string",
-            XmlTypeCode.NonNegativeInteger => "string",
-            XmlTypeCode.NonPositiveInteger => "string",
-            XmlTypeCode.Notation => "string",
-            XmlTypeCode.QName => "System.Xml.XmlQualifiedName",
-            XmlTypeCode.Duration => "string",
-            XmlTypeCode.UnsignedByte => "byte",
-            XmlTypeCode.UnsignedInt => "uint",
-            XmlTypeCode.UnsignedLong => "ulong",
-            XmlTypeCode.UnsignedShort => "ushort",
-            _ => throw new NotImplementedException($"{st.Datatype?.TypeCode} is not implemented")
-        };
-    }
 
     private string? GetSummary(XmlSchemaElement? element)
     {
