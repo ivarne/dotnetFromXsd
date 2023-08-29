@@ -145,7 +145,10 @@ public class Generator
                 // Summary = GetSummary(simpleContent),
                 Remarks = GetRestrictionsAsString(simpleContent),
                 Type = XmlTypeCodeExtentions.ToClrType(typeCode1),
-                Attributes = new AttributeData[]{
+                Attributes = new AttributeData?[]
+                {
+                    StringLengthAttribute.FromRestriction(simpleContent.Content as XmlSchemaSimpleTypeRestriction),
+                    RegularExpressionAttribute.FromRestriction(simpleContent.Content as XmlSchemaSimpleTypeRestriction),
                     new XmlTextAttributeData()
                     {
                         DataType = typeCode1
@@ -165,7 +168,7 @@ public class Generator
                         // TODO:!
                         // Summary = 
                         // Remarks =
-                        Attributes = new AttributeData[]
+                        Attributes = new AttributeData?[]
                         {
                             new XmlAttributeAttributeData()
                             {
@@ -203,8 +206,10 @@ public class Generator
                         Remarks = GetRestrictionsAsString(simpleContent),
                         Required = element.MinOccurs > 0,
                         MaxOccurs = element.MaxOccurs,
-                        Attributes = new AttributeData[]
+                        Attributes = new AttributeData?[]
                         {
+                            StringLengthAttribute.FromRestriction(simpleContent.Content as XmlSchemaSimpleTypeRestriction),
+                            RegularExpressionAttribute.FromRestriction(simpleContent.Content as XmlSchemaSimpleTypeRestriction),
                             new XmlElementAttributeData()
                             {
                                 DataType = typeCode
@@ -240,8 +245,10 @@ public class Generator
                     Remarks = GetRestrictionsAsString(st),
                     Required = element.MinOccurs > 0,
                     MaxOccurs = element.MaxOccurs,
-                    Attributes = new AttributeData[]
+                    Attributes = new AttributeData?[]
                     {
+                        StringLengthAttribute.FromRestriction(st.Content as XmlSchemaSimpleTypeRestriction),
+                        RegularExpressionAttribute.FromRestriction(st.Content as XmlSchemaSimpleTypeRestriction),
                         new XmlElementAttributeData()
                         {
                             DataType = tc
@@ -251,30 +258,6 @@ public class Generator
                 };
             default:
                 throw new NotImplementedException($"Unknown schema property type {element.ElementSchemaType?.GetType()}");
-        }
-
-    }
-
-    private static IEnumerable<AttributeData> GetDataAnnotationAttributes(XmlSchemaSimpleTypeRestriction? restriction)
-    {
-        if (restriction is null) yield break;
-
-        // Turn Max/MinLengthFacet into [StringLength(...)]
-        var maxLengthS = restriction.Facets.OfType<XmlSchemaMaxLengthFacet>().FirstOrDefault()?.Value;
-        if (int.TryParse(maxLengthS, out int maxLength))
-        {
-            var minLengthS = restriction.Facets.OfType<XmlSchemaMinLengthFacet>().FirstOrDefault()?.Value;
-            yield return new StringLengthAttribute(maxLength)
-            {
-                MinimumLength = int.TryParse(minLengthS, out var minLength) ? minLength : null
-            };
-        }
-
-        // Turn PatternFacet into [RegularExpression()]
-        var regex = restriction.Facets.OfType<XmlSchemaPatternFacet>().FirstOrDefault()?.Value;
-        if (regex is not null)
-        {
-            yield return new RegularExpressionAttribute(regex);
         }
 
     }

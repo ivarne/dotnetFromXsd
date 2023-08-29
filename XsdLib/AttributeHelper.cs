@@ -174,6 +174,17 @@ public abstract record DataAnnotationsAttribute(string name) : AttributeData(nam
 
 public record RegularExpressionAttribute(string RegularExpression) : DataAnnotationsAttribute("RegularExpression")
 {
+    public static RegularExpressionAttribute? FromRestriction(XmlSchemaSimpleTypeRestriction? restriction)
+    {
+        // Turn PatternFacet into [RegularExpression()]
+        var regex = restriction?.Facets.OfType<XmlSchemaPatternFacet>().FirstOrDefault()?.Value;
+        if (regex is not null)
+        {
+            return new RegularExpressionAttribute(regex);
+        }
+        return null;
+    }
+
     protected override IEnumerable<string> PositionalConstructorArguments
     {
         get
@@ -185,6 +196,22 @@ public record RegularExpressionAttribute(string RegularExpression) : DataAnnotat
 
 public record StringLengthAttribute(int max) : DataAnnotationsAttribute("StringLength")
 {
+    public static StringLengthAttribute? FromRestriction(XmlSchemaSimpleTypeRestriction? restriction)
+    {
+        // Turn Max/MinLengthFacet into [StringLength(...)]
+        var maxLengthS = restriction?.Facets.OfType<XmlSchemaMaxLengthFacet>().FirstOrDefault()?.Value;
+        if (int.TryParse(maxLengthS, out int maxLength))
+        {
+            var minLengthS = restriction?.Facets.OfType<XmlSchemaMinLengthFacet>().FirstOrDefault()?.Value;
+            return new StringLengthAttribute(maxLength)
+            {
+                MinimumLength = int.TryParse(minLengthS, out var minLength) ? minLength : null
+            };
+        }
+
+        return null;
+    }
+
     protected override IEnumerable<string> PositionalConstructorArguments
     {
         get

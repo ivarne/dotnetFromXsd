@@ -66,7 +66,7 @@ public class ClassProperty
     public required string Name { get; set; }
     public required bool Required { get; set; }
     public required decimal MaxOccurs { get; set; } = 1;
-    public AttributeData[] Attributes { get; set; } = Array.Empty<AttributeData>();
+    public AttributeData?[] Attributes { get; set; } = Array.Empty<AttributeData?>();
     public string? Summary { get; set; }
     public string? Remarks { get; set; }
 
@@ -93,7 +93,10 @@ public class ClassProperty
         }
         foreach (var attr in Attributes)
         {
-            sb.Append($"    [{attr.ToAttr()}]\n");
+            if (attr is not null && !(!settings.DataAnnotations && attr is DataAnnotationsAttribute))
+            {
+                sb.AppendLine($"    [{attr.ToAttr()}]");
+            }
         }
         sb.Append($$"""
             public {{(Required ? "required " : "")}}{{GetFullType()}}{{(Required ? "" : "?")}} {{Name}} { get; set; }
@@ -108,18 +111,5 @@ public class ClassProperty
             }
             sb.AppendLine($"    public bool {Name}Specified => {Name} != null;");
         }
-        // sb.Append("    public ");
-        // if (Required)
-        // {
-        //     sb.Append("required ");
-        // }
-        // sb.Append(Type);
-        // if (!Required)
-        // {
-        //     sb.Append("?");
-        // }
-        // sb.Append(" ");
-        // sb.Append(Name);
-        // sb.Append(" { get; set; }\n");
     }
 }
