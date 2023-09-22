@@ -9,14 +9,14 @@ public class FileGenerator
     private readonly Dictionary<XmlQualifiedName, int> _referenceCount = new();
 
     private readonly List<ClassModel> _rootModels;
-    private readonly string _versionFolder;
-    private readonly string _versionNamespace;
+    private readonly string _targetFolder;
+    private readonly string _targetNamespace;
     private readonly GeneratorSettings _settings;
 
-    public FileGenerator(string versionNamespace, string versionFolder, List<ClassModel> rootModels, GeneratorSettings settings)
+    public FileGenerator(string targetNamespace, string targetFolder, List<ClassModel> rootModels, GeneratorSettings settings)
     {
-        _versionFolder = versionFolder;
-        _versionNamespace = versionNamespace;
+        _targetFolder = targetFolder;
+        _targetNamespace = targetNamespace;
         _rootModels = rootModels;
         _settings = settings;
         foreach (var model in rootModels)
@@ -60,7 +60,7 @@ public class FileGenerator
         await RecurseProperties(classModel, classModels);
 
         var cSharpCode = FormatCsharpFile(classModels);
-        await File.WriteAllTextAsync(Path.Join(_versionFolder, $"{classModel.Name.Name}.cs"), cSharpCode, System.Text.Encoding.UTF8);
+        await File.WriteAllTextAsync(Path.Join(_targetFolder, $"{classModel.Name.Name}.cs"), cSharpCode, System.Text.Encoding.UTF8);
     }
 
     private async Task RecurseProperties(ClassModel classModel, List<ClassModel> classModels)
@@ -87,11 +87,13 @@ public class FileGenerator
     {
         var sb = new StringBuilder();
         sb.AppendLine("#pragma warning disable CS1591");
+        if (_settings.DataAnnotations)
+            sb.AppendLine("using System.ComponentModel.DataAnnotations;");
+        if (_settings.JsonAttributes)
+            sb.AppendLine("using System.Text.Json.Serialization;");
         sb.AppendLine("using System.Xml.Serialization;");
-        sb.AppendLine("using System.Text.Json.Serialization;");
         sb.AppendLine();
-        sb.AppendLine($"namespace {_versionNamespace};");
-        sb.AppendLine();
+        sb.Append($"namespace {_targetNamespace};");
         foreach (var cm in classModels)
         {
             cm.ToClass(sb, _settings);

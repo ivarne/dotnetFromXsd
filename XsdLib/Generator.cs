@@ -1,7 +1,7 @@
 using System.Text;
 using System.Xml;
 using System.Xml.Schema;
-using System.Xml.Serialization;
+
 using XsdLib.Utils;
 
 namespace XsdLib;
@@ -165,9 +165,8 @@ public class Generator
                         Type = "string", // attributes can't be nullable value types (int, long, DateTime), so just make everything string
                         MaxOccurs = 1,
                         Required = attribute.Use == XmlSchemaUse.Required,
-                        // TODO:!
-                        // Summary = 
-                        // Remarks =
+                        Summary = GetSummary(attribute),
+                        Remarks = GetRestrictionsAsString(attribute.AttributeSchemaType),
                         Attributes = new AttributeData?[]
                         {
                             new XmlAttributeAttributeData()
@@ -262,10 +261,10 @@ public class Generator
 
     }
 
-    private static string? GetRestrictionsAsString(XmlSchemaSimpleType st)
+    private static string? GetRestrictionsAsString(XmlSchemaSimpleType? st)
     {
         var sb = new StringBuilder();
-        switch (st.Content)
+        switch (st?.Content)
         {
             case XmlSchemaSimpleTypeRestriction simpleTypeRestriction:
                 foreach (var facet in simpleTypeRestriction.Facets)
@@ -306,6 +305,21 @@ public class Generator
                             if (enumerationFacet.Value is not null)
                             {
                                 sb.AppendLine($"Enumeration: {enumerationFacet.Value}");
+                                // Include possible documentation for each enumeration value
+                                if (enumerationFacet.Annotation?.Items is not null)
+                                {
+                                    foreach (var i in enumerationFacet.Annotation.Items)
+                                    {
+                                        if (i is XmlSchemaDocumentation doc && doc.Markup?.Length > 0)
+                                        {
+                                            foreach (var m in doc.Markup)
+                                            {
+                                                sb.Append("  "); // add some indentation
+                                                sb.AppendLine(m?.InnerText);
+                                            }
+                                        }
+                                    }
+                                }
                             }
                             break;
                         case XmlSchemaWhiteSpaceFacet whiteSpaceFacet:
@@ -326,6 +340,25 @@ public class Generator
         return sb.Length > 0 ? sb.ToString().Trim() : null;
     }
 
+    private string? GetSummary(XmlSchemaAttribute? attribute)
+    {
+        if (attribute is null) return null;
+        var items = attribute.Annotation?.Items ?? GetAttributeByName(attribute.QualifiedName)?.Annotation?.Items;
+        if (items is null) return null;
+
+        var sb = new StringBuilder();
+        foreach (var item in items)
+        {
+            if (item is XmlSchemaDocumentation doc && doc.Markup is not null)
+            {
+                foreach (var markup in doc.Markup)
+                {
+                    sb.Append(markup?.InnerText);
+                }
+            }
+        }
+        return sb.Length > 0 ? sb.ToString().Trim() : null;
+    }
 
     private string? GetSummary(XmlSchemaElement? element)
     {
@@ -344,7 +377,31 @@ public class Generator
                 }
             }
         }
-        return sb.ToString();
+        return sb.Length > 0 ? sb.ToString().Trim() : null;
+    }
+
+    public XmlSchemaAnnotated? GetAttributeByName(XmlQualifiedName? name)
+    {
+        if (name is not null)
+        {
+            foreach (var schemaObj in _schemaSet.Schemas())
+            {
+                if (schemaObj is XmlSchema schema)
+                {
+                    foreach (var attrObj in schema.Attributes.Values)
+                    {
+                        if (attrObj is XmlSchemaAttribute attribute)
+                        {
+                            if (attribute.QualifiedName == name)
+                            {
+                                return attribute;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     public XmlSchemaElement? GetElementByName(XmlQualifiedName? name)

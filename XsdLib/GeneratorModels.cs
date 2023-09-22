@@ -93,9 +93,9 @@ public class ClassProperty
         }
         foreach (var attr in Attributes)
         {
-            if (attr is not null && !(!settings.DataAnnotations && attr is DataAnnotationsAttribute))
+            if (attr is not null && AttributeNotIgnored(settings, attr))
             {
-                sb.AppendLine($"    [{attr.ToAttr()}]");
+                sb.Append($"    [{attr.ToAttr()}]\n");
             }
         }
         sb.Append($$"""
@@ -111,5 +111,10 @@ public class ClassProperty
             }
             sb.AppendLine($"    public bool {Name}Specified => {Name} != null;");
         }
+    }
+
+    private static bool AttributeNotIgnored(GeneratorSettings settings, AttributeData attr)
+    {
+        return !(!settings.DataAnnotations && attr is DataAnnotationsAttribute);
     }
 }
